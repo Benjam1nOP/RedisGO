@@ -44,8 +44,6 @@ func handleConnection(conn net.Conn){
 	input = strings.TrimSpace(input)
 		if input== "PING"{
 			conn.Write([]byte("+PONG\r\n"))
-		}else{
-			conn.Write([]byte("UNKNOWN INPUT\r\n"))
 		}
 	}
 	
