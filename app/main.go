@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 var _ = net.Listen
@@ -17,10 +19,34 @@ func main(){
 		fmt.Println("Error Listening", err.Error())
 		os.Exit(1)
 	}
-	conn, err := l.Accept()
-	if err != nil{
-		fmt.Println("Error Accepting Connection", err.Error())
-		os.Exit(1)
+	for {
+		conn, err := l.Accept()
+		if err != nil{
+			fmt.Println("Error Accepting Connection", err.Error())
+			os.Exit(1)
+		}
+	//defer l.Close()
+	go handleConnection(conn)
 	}
-conn.Write([]byte("+PONG\r\n"))
+	
+//conn.Write([]byte("+PONG\r\n"))
+}
+func handleConnection(conn net.Conn){
+	
+		defer conn.Close()
+		reader := bufio.NewReader(conn)
+	for{
+		input, err :=reader.ReadString('\n')
+		if err!= nil{
+			fmt.Printf("Error while reading input")
+			return
+		}
+	input = strings.TrimSpace(input)
+		if strings.ToUpper(input)== "PING"{
+			conn.Write([]byte("+PONG\r\n"))
+		}else{
+			conn.Write([]byte("UNKNOWN INPUT\r\n"))
+		}
+	}
+	
 }
