@@ -55,6 +55,8 @@ func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a con
 	//	}
 		line = strings.TrimSpace(line)
 		var parts []string
+		store := make(map[string]string)
+
 		if strings.HasPrefix(line,"*"){ // only resp configuration
 			numofele, err := strconv.Atoi(line[1:])
 			if err!=nil {
@@ -94,6 +96,27 @@ func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a con
 					conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(echomsg), echomsg))) // sending back $4\r\nHELLO\r\n
 				}else {
 					conn.Write([]byte("$0\r\n\r\n"))
+				}
+			case "SET":
+				if len(parts)!=3 {
+					conn.Write([]byte("Error Wrong number of arguments for SET Command\r\n"))
+				}else{
+					key :=parts[1]
+					value := parts[2]
+					store[key] = value
+					conn.Write([]byte("+OK\r\n"))
+				}
+			case "GET":
+				if len(parts)!=2 {
+					conn.Write([]byte("Error Wrong number of arguments for GET Command\r\n"))
+				}else{
+					key := parts[1]
+					getvalue, exists := store[key]
+					if !exists{
+						conn.Write([]byte("$-1\r\n"))
+					}else{
+					conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n",len(getvalue), getvalue)))
+					}
 				}
 			default:
 				fmt.Fprintf(conn, "Error Unknown Command %s\r\n", cmd)  //sprint used to store into a variable instead of printf that prints directly to screen
