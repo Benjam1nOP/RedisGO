@@ -37,6 +37,7 @@ func main(){
 func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a connection type
 		defer conn.Close()
 		reader := bufio.NewReader(conn)
+		store := make(map[string]string)
 	for{
 		line, err :=reader.ReadString('\n')
 		if err!= nil{
@@ -55,7 +56,6 @@ func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a con
 	//	}
 		line = strings.TrimSpace(line)
 		var parts []string
-		store := make(map[string]string)
 
 		if strings.HasPrefix(line,"*"){ // only resp configuration
 			numofele, err := strconv.Atoi(line[1:])
