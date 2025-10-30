@@ -29,7 +29,7 @@ func main(){
 	for {
 		conn, err := l.Accept()
 		if err != nil{
-			fmt.Println("Error Accepting Connection", err.Error())
+			fmt.Println("-Error Accepting Connection", err.Error())
 			os.Exit(1)
 		}
 	go handleConnection(conn)
@@ -44,9 +44,9 @@ func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a con
 		line, err :=reader.ReadString('\n')
 		if err!= nil{
 			if err ==io.EOF{
-				fmt.Printf("Client Disconnected")
+				fmt.Printf("-Client Disconnected")
 			}else{
-				fmt.Printf("Error while reading input")
+				fmt.Printf("-Error while reading input")
 			}
 			return
 		}
@@ -62,25 +62,25 @@ func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a con
 		if strings.HasPrefix(line,"*"){ // only resp configuration
 			numofele, err := strconv.Atoi(line[1:])
 			if err!=nil {
-				fmt.Printf("Not able to convert to int - the no of elements")
+				fmt.Printf("-Not able to convert to int - the no of elements")
 				return
 			}
 			for i:= 0; i<numofele; i++{
 				linelength, err := reader.ReadString('\n')
 				if err!= nil {
-					fmt.Printf("Not able to read the length of the line")
+					fmt.Printf("-Not able to read the length of the line")
 					return
 				}
 				linelength = strings.TrimSpace(linelength)
 				strlength, err := strconv.Atoi(linelength[1:]) //skips the first $ and goes to 4 for ECHOhg4
 				if err!=nil {
-					fmt.Printf("Not able to read the string bulk length")
+					fmt.Printf("-Not able to read the string bulk length")
 					return
 				}
 				buf := make([]byte,strlength)  // make a buffer bucket to read only of strlength i.e $4 only 4 of ECHO
 				_, err = reader.Read(buf)	// auto reads buf without storing it. now buf = ECHO
 				if err!=nil {
-					fmt.Printf("Error reading bytes of strlength in to buf")
+					fmt.Printf("-Error reading bytes of strlength in to buf")
 					return
 				}
 				reader.Discard(2) // discarding the last 2 \r\n of any word that we read
@@ -91,7 +91,7 @@ func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a con
 			// instead of conn.Write([]byte (text)) we can use fmt.Fprintf that directly 
 			switch cmd {
 			case "PING":
-				conn.Write([]byte("+PONG\r\n")) // alernative - fmt.Fprintf(conn, "+PONG\r\n")
+				conn.Write([]byte("+PONG\r\n")) // alternative - fmt.Fprintf(conn, "+PONG\r\n")
 			case "ECHO":
 				if len(parts) > 1 {
 					echomsg := strings.Join(parts[1:], " ") // automatically loops and join strings inside parts i.e slice using space
@@ -106,7 +106,7 @@ func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a con
 				handleGET(conn, parts)
 
 			default:
-				fmt.Fprintf(conn, "Error Unknown Command %s\r\n", cmd)  //sprint used to store into a variable instead of printf that prints directly to screen
+				fmt.Fprintf(conn, "-Error Unknown Command %s\r\n", cmd)  //sprint used to store into a variable instead of printf that prints directly to screen
 			}
 		}
 	}                                                                          	
@@ -114,7 +114,7 @@ func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a con
 
 func handleSET(conn net.Conn, parts []string){
 	if len(parts)< 3 {
-		conn.Write([]byte("Error Wrong number of arguments for SET Command\r\n"))
+		conn.Write([]byte("-Error Wrong number of arguments for SET Command\r\n"))
 		return
 	}
 		key :=parts[1]
@@ -126,7 +126,7 @@ func handleSET(conn net.Conn, parts []string){
 		ttype := strings.ToUpper(parts[3]) // to know the type EX or PX
 		tlimit, err := strconv.Atoi(parts[4]) // to convert the string to int
 		if err!= nil{
-			conn.Write([]byte("Error while converting the time limit from string to int"))
+			conn.Write([]byte("-Error while converting the time limit from string to int"))
 		}
 		switch ttype {
 		case "EX":
@@ -134,7 +134,7 @@ func handleSET(conn net.Conn, parts []string){
 		case "PX":
 			timeDB[key] = time.Now().Add(time.Duration(tlimit) * time.Millisecond)
 		default:
-			conn.Write([]byte("Not a valid time argument"))
+			conn.Write([]byte("-Not a valid time argument"))
 		}
 	}
 	conn.Write([]byte("+OK\r\n"))
@@ -142,7 +142,7 @@ func handleSET(conn net.Conn, parts []string){
 
 func handleGET(conn net.Conn, parts []string){
 	if len(parts) !=2 {
-		conn.Write([]byte("Error Wrong number of arguments for GET Command\r\n"))
+		conn.Write([]byte("-Error Wrong number of arguments for GET Command\r\n"))
 	}
 		key := parts[1]
 		checkexpiry(key) // if expired == true delete the key in both store and 
