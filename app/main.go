@@ -13,8 +13,8 @@ import (
 
 var _ = net.Listen
 var _ = os.Exit
-	var store = make(map[string]string) // global declaration for access to diff functions
-	var texpiry = make (map[string]time.Time) //for storing expiry times for set
+	var DB = make(map[string]string) // global declaration for access to diff functions
+	var timeDB = make (map[string]time.Time) //for storing expiry times for SET function
 	
 func main(){
 	//var l net.Listener
@@ -119,7 +119,7 @@ func handleSET(conn net.Conn, parts []string){
 	}
 		key :=parts[1]
 		value := parts[2]
-		store[key] = value
+		DB[key] = value
 		
 	
 	if len(parts)> 3 {
@@ -130,9 +130,9 @@ func handleSET(conn net.Conn, parts []string){
 		}
 		switch ttype {
 		case "EX":
-			texpiry[key] = time.Now().Add(time.Duration(tlimit) * time.Second) // set the expiry to foo 10secs for SET FOO BAR EX 10
+			timeDB[key] = time.Now().Add(time.Duration(tlimit) * time.Second) // set the expiry to foo 10secs for SET FOO BAR EX 10
 		case "PX":
-			texpiry[key] = time.Now().Add(time.Duration(tlimit) * time.Millisecond)
+			timeDB[key] = time.Now().Add(time.Duration(tlimit) * time.Millisecond)
 		default:
 			conn.Write([]byte("Not a valid time argument"))
 		}
@@ -141,14 +141,13 @@ func handleSET(conn net.Conn, parts []string){
 }
 
 func handleGET(conn net.Conn, parts []string){
-	if len(parts)< 2 {
+	if len(parts) !=2 {
 		conn.Write([]byte("Error Wrong number of arguments for GET Command\r\n"))
 	}
 		key := parts[1]
-		if checkexpiry(key){ // if expired == true
-			conn.Write([]byte("$-1\r\n"))
-		}
-		getvalue, exists := store[key]
+		checkexpiry(key) // if expired == true delete the key in both store and 
+	
+		getvalue, exists := DB[key]
 		if !exists{
 			conn.Write([]byte("$-1\r\n"))
 		}else{
@@ -156,12 +155,10 @@ func handleGET(conn net.Conn, parts []string){
 		}
 }
 
-func checkexpiry(key string) bool{
-	getvalue, exists := texpiry[key]  // to get value & value
+func checkexpiry(key string){
+	getvalue, exists := timeDB[key]  // to get value & value
 	if exists && time.Now().After(getvalue){ // to check if value exists and the current time is after the expiry time
-		delete(store, key)
-		delete(texpiry, key)
-		return true
+		delete(DB, key)
+		delete(timeDB, key)
 	}
-	return false
 }
