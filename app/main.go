@@ -8,11 +8,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var _ = net.Listen
 var _ = os.Exit
-
+	var store = make(map[string]string) // global declaration for access to diff functions
+	var texpiry = make (map[string]time.Time) //for storing expiry times for set
+	
 func main(){
 	//var l net.Listener
 	//var err error
@@ -37,7 +40,6 @@ func main(){
 func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a connection type
 		defer conn.Close()
 		reader := bufio.NewReader(conn)
-		store := make(map[string]string)
 	for{
 		line, err :=reader.ReadString('\n')
 		if err!= nil{
@@ -98,29 +100,68 @@ func handleConnection(conn net.Conn){ //net.Conn returned by l.Accept() as a con
 					conn.Write([]byte("$0\r\n\r\n"))
 				}
 			case "SET":
-				if len(parts)!=3 {
-					conn.Write([]byte("Error Wrong number of arguments for SET Command\r\n"))
-				}else{
-					key :=parts[1]
-					value := parts[2]
-					store[key] = value
-					conn.Write([]byte("+OK\r\n"))
-				}
+				handleSET(conn, parts)
+
 			case "GET":
-				if len(parts)!=2 {
-					conn.Write([]byte("Error Wrong number of arguments for GET Command\r\n"))
-				}else{
-					key := parts[1]
-					getvalue, exists := store[key]
-					if !exists{
-						conn.Write([]byte("$-1\r\n"))
-					}else{
-					conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n",len(getvalue), getvalue)))
-					}
-				}
+				handleGET(conn, parts)
+
 			default:
 				fmt.Fprintf(conn, "Error Unknown Command %s\r\n", cmd)  //sprint used to store into a variable instead of printf that prints directly to screen
 			}
 		}
 	}                                                                          	
+}
+
+func handleSET(conn net.Conn, parts []string){
+	if len(parts)< 3 {
+		conn.Write([]byte("Error Wrong number of arguments for SET Command\r\n"))
+		return
+	}
+		key :=parts[1]
+		value := parts[2]
+		store[key] = value
+		
+	
+	if len(parts)> 3 {
+		ttype := strings.ToUpper(parts[3]) // to know the type EX or PX
+		tlimit, err := strconv.Atoi(parts[4]) // to convert the string to int
+		if err!= nil{
+			conn.Write([]byte("Error while converting the time limit from string to int"))
+		}
+		switch ttype {
+		case "EX":
+			texpiry[key] = time.Now().Add(time.Duration(tlimit) * time.Second) // set the expiry to foo 10secs for SET FOO BAR EX 10
+		case "PX":
+			texpiry[key] = time.Now().Add(time.Duration(tlimit) * time.Millisecond)
+		default:
+			conn.Write([]byte("Not a valid time argument"))
+		}
+	}
+	conn.Write([]byte("+OK\r\n"))
+}
+
+func handleGET(conn net.Conn, parts []string){
+	if len(parts)< 2 {
+		conn.Write([]byte("Error Wrong number of arguments for GET Command\r\n"))
+	}
+		key := parts[1]
+		if checkexpiry(key){ // if expired == true
+			conn.Write([]byte("$-1\r\n"))
+		}
+		getvalue, exists := store[key]
+		if !exists{
+			conn.Write([]byte("$-1\r\n"))
+		}else{
+		conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n",len(getvalue), getvalue)))
+		}
+}
+
+func checkexpiry(key string) bool{
+	getvalue, exists := texpiry[key]  // to get value & value
+	if exists && time.Now().After(getvalue){ // to check if value exists and the current time is after the expiry time
+		delete(store, key)
+		delete(texpiry, key)
+		return true
+	}
+	return false
 }
